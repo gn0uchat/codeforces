@@ -16,6 +16,10 @@ int mod( int v, int base ){
 	return ( ( v % base ) + base ) % base;
 }
 
+class graph{
+	vector< lazy_list<int> > adj_list;
+};
+
 void dfs_traverse(
 	int n,
 	vector< list< int > > &adj,
@@ -114,6 +118,11 @@ int main(){
 
 
 	dsu cycle_set( n );
+
+	vector<int> cycle_set_value( n, 0 );
+	for( int i = 0; i < n; i ++ ){
+		cycle_set_value[ i ] = city_value[ i ];
+	}
 		
 
 	dfs_traverse( n, adj, [&](
@@ -129,12 +138,15 @@ int main(){
 			min_d = min( min_d, depth[ v ] );
 		}
 
-		for( int i = u, j = u; depth[ i ] >= min_d;){
+		if( depth[ u ] - min_d >= 2 ){
+			for( int i = u, j = u; depth[ i ] >= min_d;){
 
-			cycle_set.join( i, j );
+				cycle_set.join( i, j );
+				cycle_set_value[ i ] += cycle_set_value[ j ];
 
-			j = i;
-			i = cycle_set.repr( father[ i ] );
+				j = i;
+				i = cycle_set.repr( father[ i ] );
+			}
 		}
 
 		deeper();});

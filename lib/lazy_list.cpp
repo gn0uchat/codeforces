@@ -32,7 +32,6 @@ class lazy_list{
 	}
 
 	lazy_list<T>& cdr(){
-		//cout << "cdr" << endl;
 		if( this->tail == NULL ){
 			this->tail = new lazy_list<T>;
 			* this->tail = this->delay();
@@ -40,7 +39,15 @@ class lazy_list{
 		return * this->tail;
 	}
 
+	virtual bool empty(){ return false; }
+
 };
+
+template <typename T>
+class empty_list : public lazy_list {
+	public:
+	bool empty(){ return true; }
+}
 
 template <typename T>
 lazy_list<T>& add( lazy_list<T>& a, lazy_list<T>& b ){
@@ -58,6 +65,23 @@ T list_ref( lazy_list<T>& l, int n ){
 		return list_ref( l.cdr(), n - 1 );
 	}
 }
+
+template <typename T>
+lazy_list<T>& list_interleave( lazy_list<T> &list_front, lazy_list<T> &list_rear ){
+	auto delay = [&]() -> lazy_list<T>& { return list_interleave( list_rear, list_front.cdr() ); }
+	return *( new lazy_list<T>( list_front.car(), delay ) );
+}
+
+template <typename T>
+lazy_list<T>& list_concat( lazy_list<T> &list_front, lazy_list<T> &list_rear ){
+	if( list_front.empty() ){
+		return list_rear;
+	}else{
+		auto delay = [&]() -> lazy_list<T>& { return list_concat( list_front.cdr(), list_rear ); }
+		return *( new lazy_list<T>( list_front.car(), delay ) );
+	}
+}
+
 
 int main(){
 
