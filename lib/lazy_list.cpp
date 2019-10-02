@@ -101,6 +101,23 @@ T list_ref( lazy_list<T>& l, int n ){
 	}
 }
 
+template <typename T>
+lazy_list<T>& list_interleave( lazy_list<T> &list_front, lazy_list<T> &list_rear ){
+	auto delay = [&]() -> lazy_list<T>& { return list_interleave( list_rear, list_front.cdr() ); }
+	return *( new lazy_list<T>( list_front.car(), delay ) );
+}
+
+template <typename T>
+lazy_list<T>& list_concat( lazy_list<T> &list_front, lazy_list<T> &list_rear ){
+	if( list_front.empty() ){
+		return list_rear;
+	}else{
+		auto delay = [&]() -> lazy_list<T>& { return list_concat( list_front.cdr(), list_rear ); }
+		return *( new lazy_list<T>( list_front.car(), delay ) );
+	}
+}
+
+
 int main(){
 
 	int i = 0;
