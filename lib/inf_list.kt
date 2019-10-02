@@ -1,5 +1,5 @@
 sealed class thunk<T>(){
-	abstract fun eval(): inf_list<T>
+	abstract fun eval() : inf_list<T>
 }
 
 class eager_thunk<T>( val value: inf_list<T> ): thunk<T>(){
@@ -14,43 +14,72 @@ class lazy_thunk<T>( var lambda: () -> inf_list<T> ): thunk<T>(){
 	}
 }
 
-class inf_list<T>( val head: T, var tail: thunk<T> ){
+class inf_list<T>( val head: T, var tail: thunk<T>, var delay: Boolean ){
 
 	constructor( head: T, lambda: () -> inf_list<T> ) :
-		this( head, lazy_thunk<T>( lambda ) )
+		this( head, lazy_thunk<T>( lambda ), true )
 
 	constructor( head: T, tail: inf_list<T> ) :
-		this( head, eager_thunk<T>( tail ) )
+		this( head, eager_thunk<T>( tail ), false )
 
-	fun car(): T { return this.head; }
+	constructor( head: T ) :
+		this( head, lazy_thunk<T>( {-> inf_list<T>( head )}), true )
 
-	fun cdr(): inf_list<T> {
-		val set_and_eval = fun( delay: lazy_thunk<T> ): inf_list<T>{
-			val v = delay.eval()
-			this.tail = eager_thunk<T>( v )
+	fun car() : T { return head }
+
+	fun cdr() : inf_list<T> {
+		if( delay ){
+			val v = tail.eval()
+			delay = false
+			tail = eager_thunk<T>( v )
 			return v
+		}else{
+			return tail.eval()
 		}
-
-		return when ( this.tail ){
-			is eager_thunk<T> -> this.tail.eval()
-			is lazy_thunk<T>  -> set_and_eval( this.tail )}
 	}
 
 	fun set_cdr( lambda: () -> inf_list<T> ){
-		this.tail = lazy_thunk<T>( lambda )
+		tail = lazy_thunk<T>( lambda )
+		delay = true
 	}
 
 	fun set_cdr( il: inf_list<T> ){
-		this.tail = eager_thunk<T>( il )
+		tail = eager_thunk<T>( il )
+		delay = false
+	}
+
+	fun map( lambda: (T) -> T ) : inf_list<T> {
+		return inf_list<T>( lambda( car() ), {-> cdr().map( lambda )} )
+	}
+
+	fun filter( pass_cond: (T) -> Boolean ) : inf_list<T> {
+		if( pass_cond( car() ) ){
+			return inf_list<T>( car(), {-> cdr().filter( pass_cond )})
+		}else{
+			return cdr().filter( pass_cond )
+		}
+	}
+
+	fun until( lambda: (T) -> Unit, stop_cond: (T) -> Boolean ){
+		if( ! stop_cond( car() ) ){
+			lambda( car() )
+			cdr().until( lambda, stop_cond )
+		}
 	}
 }
-
-class repeat_list<T>( )
 
 fun <T> list_op( il1: inf_list<T>, il2: inf_list<T>, op: (T, T) -> T ) : inf_list<T> {
 	val head   = op( il1.car(), il2.car() )
 	val lambda = {-> list_op<T>( il1.cdr(), il2.cdr(), op ) }
 	return inf_list<T>( head, lambda )
+}
+
+fun <T> list_ref( il: inf_list<T>, n: Int ) : T {
+	if( n == 0 ){
+		return il.car()
+	}else{
+		return list_ref( il.cdr(), n - 1 )
+	}
 }
 
 fun main( args: Array<String> ){
@@ -61,5 +90,5 @@ fun main( args: Array<String> ){
 
 	fib.set_cdr( inf_list<Int>( 1, {-> list_op<Int>( fib, fib.cdr(), add )}))
 
-	println( fib.car() )
+	fib.until( { x -> println( x )}, { x -> x > 300 } )
 }
