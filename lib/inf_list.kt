@@ -83,12 +83,9 @@ fun <T> list_ref( il: inf_list<T>, n: Int ) : T {
 }
 
 fun main( args: Array<String> ){
-
-	val add = fun( a: Int, b: Int ) : Int { return a + b; }
-
-	var fib = inf_list<Int>( 0 )
-
-	fib.set_cdr( inf_list<Int>( 1, {-> list_op<Int>( fib, fib.cdr(), add )}))
-
-	fib.until( { x -> println( x )}, { x -> x > 300 } )
+	val n = 16
+	var adj = Array< inf_list<Int> >( n ){ i -> inf_list<Int>(i) }
+	dddddddddddd
+	adj[ a ] = list_interleave( adj[ a ], adj[ b ] )
+	adj[ a ] = 
 }
