@@ -9,6 +9,11 @@ int bit_length( long long int v ){
 	return n;
 }
 
+long long int two_pow( int pow ){
+	long long int val = 1;
+	return ( val << pow );
+}
+
 long long int path_comb( long long int n, long long int v ){
 	if( v == n ){
 		return 1;
@@ -18,13 +23,13 @@ long long int path_comb( long long int n, long long int v ){
 	long long int v_prefix_comb;
 
 	if( v == n_prefix ){
-		v_prefix_comb = ( 1 << entropy_length )
+		v_prefix_comb = two_pow( entropy_length )
 				+ ( n - (n_prefix << entropy_length) );
 	}else{
 		if( v > n_prefix ){
-			v_prefix_comb = ( 1 << entropy_length ) - 1;
+			v_prefix_comb = two_pow( entropy_length ) - 1;
 		}else{
-			v_prefix_comb = ( 1 << (entropy_length + 1) ) - 1;
+			v_prefix_comb = two_pow( entropy_length + 1 ) - 1;
 		}
 	}
 
@@ -43,8 +48,8 @@ int main(){
 		cout << n << endl;
 	}else{
 		long long int solution = 0;
-		for( int length = bit_length( n ) - 1; solution == 0; length -- ){
-			long long int full = ( 1 << length ) - 1;
+		for( int length = bit_length( n ); solution == 0; length -- ){
+			long long int full = two_pow( length ) - 1;
 			long long int n_prefix = n >> ( bit_length( n ) - length );
 			list<long long int> searching_v;
 
@@ -53,17 +58,15 @@ int main(){
 			searching_v.push_back( n_prefix );
 			searching_v.push_back( n_prefix - 1 );
 			searching_v.push_back( n_prefix - 2 );
+			searching_v.push_back( n_prefix - 3 );
 
-			searching_v.remove_if([length]( auto v ){
-				return ( v <= 0 ) || ( bit_length( v ) != length );
+			searching_v.remove_if([length, n]( auto v ){
+				return ( v <= 0 ) || ( v > n ) || ( bit_length( v ) != length );
 			});
 
 			for( auto v : searching_v ){
 				
-				long long int vv = path_comb( n, v );
-				printf( "path_comb(%lld, %lld) = %lld\n", n, v, vv );
-				if( vv  >= k ){
-				// if( path_comb( n, v ) >= k ){
+				if( path_comb( n, v ) >= k ){
 					solution = v;
 					break;
 				}
