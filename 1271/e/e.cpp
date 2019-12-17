@@ -60,7 +60,10 @@ int main(){
 
 			for( auto v : searching_v ){
 				
-				if( path_comb( n, v ) >= k ){
+				long long int vv = path_comb( n, v );
+				printf( "path_comb(%lld, %lld) = %lld\n", n, v, vv );
+				if( vv  >= k ){
+				// if( path_comb( n, v ) >= k ){
 					solution = v;
 					break;
 				}
