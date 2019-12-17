@@ -1,3 +1,7 @@
+# cf test cases
+ans*.txt
+in*.txt
+
 # Prerequisites
 *.d
 
