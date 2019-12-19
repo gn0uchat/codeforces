@@ -6,6 +6,8 @@
 #include<functional>
 #include<queue>
 #include<iostream>
+#include<list>
+#include<tuple>
 using namespace std;
 
 int ceil( int num, int dem ){
