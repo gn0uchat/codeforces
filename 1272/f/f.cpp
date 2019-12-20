@@ -32,12 +32,12 @@ int mcs( int left, int si, int ti ){
 		int opt;
 		if( left > 0 ){
 			if( si == sn ){
-				opt = mcs( next_left( t[ ti ] ), si, ti + 1 ); 
+				opt = mcs( next_left( t[ ti ], left ), si, ti + 1 ); 
 			}else if( ti == tn ){
-				opt = mcs( next_left( s[ si ] ), si + 1, ti ); 
+				opt = mcs( next_left( s[ si ], left ), si + 1, ti ); 
 			}else if( s[ si ] == t[ ti ] ){
 				char c = s[ si ];
-				opt = mcs( next_left( s[ si ] ), si + 1, ti + 1); 
+				opt = mcs( next_left( s[ si ], left ), si + 1, ti + 1); 
 			}else{
 				opt = min( mcs( left + 1,
 						inc_ifeq( s, si, '('),
@@ -51,7 +51,7 @@ int mcs( int left, int si, int ti ){
 				   inc_ifeq( s, si, '(' ),
 				   inc_ifeq( t, ti, '(' ));
 		}
-		_mcs[ left ][ si ][ ti ] = opt;
+		_mcs[ left ][ si ][ ti ] = 1 + opt;
 		_mcs_valid[ left ][ si ][ ti ] = true;
 		return _mcs[ left ][ si ][ ti ];
 	}
@@ -60,14 +60,13 @@ int mcs( int left, int si, int ti ){
 
 
 int main(){
-
 	cin >> s >> t;
 
 	sn = s.length();
 	tn = t.length();
-	
+
 	int left, si, ti;
-	for( left = 0, si = 0, ti = 0; !( si < sn && ti < tn && left == 0 );){
+	for( left = 0, si = 0, ti = 0; si < sn || ti < tn || left != 0 ;){
 		char c;
 		if( si == sn && ti == tn ){
 			c = ')';
@@ -79,7 +78,7 @@ int main(){
 			}else if( ti == tn ){
 				c = s[ si ];
 			}else if( s[ si ] == t[ ti ] ){
-				char c = s[ si ];
+				c = s[ si ];
 			}else{
 				int lc = mcs( left + 1,
 					      inc_ifeq( s, si, '('),
