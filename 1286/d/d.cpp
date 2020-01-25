@@ -87,6 +87,126 @@ int fd_div( int dividend, int divisor, int prime ){
 	return mul( dividend, inv );
 }
 
+int segment( int lb, int ub, int i, vecor<int> &mem ){
+	
+}
+
+template<class T>
+class segment_tree{
+private:
+	typedef segment tuple<int, int>
+	int alloc_i;
+	int low_bound, upp_bound;
+	vector< tuple< bool, int, int, T > > mem;
+	function<T(T, T)> value_comb;
+
+	T node_init( int lb, int ub, int i, init_v ){
+		auto&[ dirty, li, ri, v ] = mem[ i ];
+
+		dirty = false;
+		if( ub - lb == 1 ){
+			v = init_v;
+			return v;
+		}else{
+			int mid = ( lb + ub ) / 2;
+			li = alloc_i ++;	
+			ri = alloc_i ++;
+
+			int lv = node_init( lb, mid, li, init_v );
+			int rv = node_init( mid, ub, ri, init_v );
+
+			v = this->value_comb( lv, rv );
+			return v;
+		}
+	}
+
+	T node_query( int lb, int ub, int i){
+	
+		auto&[ dirty, li, ri, v ] = mem[ i ];
+
+		if( ! dirty ){
+			int mid = ( lb + ub ) / 2;
+			T left_v =  this->segment_query( lb, mid, li );
+			T right_v = this->segment_query( mid, ub, ri );
+
+			v = value_comb( left_v, right_v );
+			dirty = false;
+
+			return v;
+		}else{
+			return v;
+		}
+	}
+
+	T node_update( segment q, segment nd, int i, int update_v ){
+		auto&[ dirty, li, ri, v ] = mem[ i ];
+
+		dirty = true;
+
+		if( q == nd ){
+		
+		}
+
+
+	}
+
+	T segment_query( segment q, segment nd, int i ){
+
+		auto[ nd_lb, nd_ub ] = nd;
+		auto[ q_lb, q_ub ] = q;
+		auto&[ dirty, li, ri, v ] = mem[ i ];
+
+		if( nd_ub - nb_lb == 1 ){
+			if( ! set ){
+				set = true;
+			}
+			return v;
+		}else{
+			if( ! set ){
+				set = true;
+				li = this->alloc_i ++;
+				ri = this->alloc_i ++; 
+			}
+			int mid = ( nd_lb + nd_ub ) / 2;
+
+			if( q_ub <= mid ){
+				return segment_query( q, { nd_lb, mid }, li );
+			}else if( mid <= q_lb ){
+				return segment_query( q, { mid, nd_ub }, ri );
+			}else{
+				T left_v  = segment_query( { q_lb, mid }, { nd_lb, mid }, li );
+				T right_v = segment_query( { mid, q_ub }, { mid, nd_ub }, ri );
+				return this->value_op( left_v, right_v );
+			}
+		}
+
+		
+
+
+		if( q_ub <= mid )
+		if( q_lb <= mid && mid < q_ub )
+
+
+
+	}
+public:
+	segment_tree( int lb, int ub, T init, function<T(T, T)> op ){
+		int pow_n;
+		int n = ub - lb;
+		for( pow_n = 1; pow_n < n; pow_n <<= 1 );
+
+		this->value_op = op;
+		this->mem_i = 0;
+		this->low_bound = lb;
+		this->upp_bound = ub;
+		this->mem.resize( 2 * pow_n - 1 , { false, 0, 0, init });
+
+	}
+
+	T query( int lb, int ub ){
+		auto[ set, li, ri, v ] = mem[ 0 ];
+	}
+};
 
 
 int main(){
