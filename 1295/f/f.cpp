@@ -102,8 +102,10 @@ fd fac( int x ){
 
 fd pow( int b, int p ){
 	fd v( 1 );
-	for( int i = 0; i < p; i ++ ){
-		v = v * b;
+	for(; p > 0; p >>= 1, b = b * b ){
+		if( p & 1 ){
+			v = v * b;
+		}
 	}
 	return v;
 }
@@ -112,7 +114,11 @@ fd comb_rg( int x, int d ){
 	if( x == 0 ){
 		return 1;
 	}else{
-		return fac( x + d - 1 ) / ( pow( d, x ) * fac( x ) * fac( d - 1 ) );
+		fd f( 1 );
+		for( int i = d; i < d + x; i ++ ){
+			f = f * i;
+		}
+		return f / ( pow( d, x ) * fac( x ) );
 	}
 }
 
@@ -126,9 +132,9 @@ tuple<bool, rg> intrs( rg a, rg b ){
 	}
 }
 
-fd rg_len( rg r ){
-	auto[ rg_i, rg_j, bnd ] = r;
-	return bnd[ rg_j ] - bnd[ rg_i ];
+int rg_len( rg r ){
+	auto[ lb, ub ] = r;
+	return ub - lb;
 }
 
 bool rg_empty( rg r ){
@@ -137,13 +143,13 @@ bool rg_empty( rg r ){
 }
 
 tuple< rg, rg > split( rg s, rg d ){
-	auto[ s_lb, s_ub ] = c;
+	auto[ s_lb, s_ub ] = s;
 	auto[ d_lb, d_ub ] = d;
 	return { { d_ub, s_ub }, { s_lb, d_lb } };
 }
 
-tuple<bool, fd> _prob_good[50][50+1][50+1];
-tuple< rg > prob_bndr;
+tuple<bool, fd> _prob_good[50][50][50];
+vector< rg > prob_bndr;
 rg full_rg;
 
 fd prob_good( int pb_i, int int_h, int int_n ){
@@ -197,13 +203,20 @@ int main(){
 	int n;
 
 	cin >> n;
+	int max_bndr = 0;
 
 	for( int i = 0; i < n; i ++ ){
 		int l, r;
 		cin >> l >> r;
-		prob.push_back( { l, r + 1 } );
 		prob_bndr.push_back( { l, r + 1 } );
+		if( max_bndr < r + 1 ){
+			max_bndr = r + 1;
+		}
 	}
+
+	full_rg = { 0, max_bndr };
+
+	cout << * prob_good( 0, 0, 0 );
 
 	return 0;
 }
