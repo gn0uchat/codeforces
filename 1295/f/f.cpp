@@ -11,7 +11,6 @@
 #include<list>
 #include<tuple>
 using namespace std;
-
 template< int prime >
 class mod_int_fd{
 private:
@@ -89,8 +88,6 @@ public:
 };
 
 typedef mod_int_fd<998244353> fd;
-typedef tuple<int, int, const vector<int>&> rg;
-typedef tuple<int, int, const vector< rg >& > prob_t;
 
 fd fac( int x ){
 	fd v( 1 );
@@ -111,88 +108,104 @@ fd pow( int b, int p ){
 }
 
 fd comb_rg( int x, int d ){
-	if( x == 0 ){
-		return 1;
-	}else{
-		fd f( 1 );
-		for( int i = d; i < d + x; i ++ ){
-			f = f * i;
-		}
-		return f / ( pow( d, x ) * fac( x ) );
+	fd f( 1 );
+	for( int i = d; i < d + x; i ++ ){
+		f = f * i;
 	}
+	return f / ( pow( d, x ) * fac( x ) );
 }
 
-tuple<bool, rg> intrs( rg a, rg b ){
+const bool LB = false;
+const bool UB = true;
+
+typedef tuple<int,bool> pt;
+typedef tuple<pt, pt> rg;
+
+vector< tuple<int, int> >bndr;
+int bndr_n;
+
+int pt_val( pt p ){
+	auto[ i, b ] = p;
+	auto[ ub, lb ] = bndr[ i ];
+	return b == UB ? ub : lb;
+}
+
+bool pt_ord( pt p ){
+	auto[ i, b ] = p;
+	return i;
+}
+
+<bool, rg> inters( rg a, rg b ){
 	auto[ a_lb, a_ub ] = a;
 	auto[ b_lb, b_ub ] = b;
-	if( a_lb >= b_ub || a_ub <= b_lb ){
-		return { false, { 0, 0 } };
+
+	pt int_lb = pt_val( a_lb ) > pt_val( b_lb ) ? a_lb : b_lb;
+	pt int_ub = pt_val( a_ub ) < pt_val( b_ub ) ? a_ub : b_ub;
+
+	if( pt_val( int_ub ) <= pt_val( int_lb ) ){
+		return { false, { int_lb, int_ub } };
 	}else{
-		return { true, { max( a_lb, b_lb ), min( a_ub, b_ub ) } };
+		return { true, { int_lb, int_ub } };
 	}
 }
 
 int rg_len( rg r ){
 	auto[ lb, ub ] = r;
-	return ub - lb;
+	return pt_val( ub ) - pt_val( lb );
 }
 
-bool rg_empty( rg r ){
-	auto [ lb, ub ] = r;
-	return lb >= ub;
-}
+tuple<bool, fd> _good[ 2 ][ 2 ][ 50 ][ 50 ][ 50 ];
 
-tuple< rg, rg > split( rg s, rg d ){
-	auto[ s_lb, s_ub ] = s;
-	auto[ d_lb, d_ub ] = d;
-	return { { d_ub, s_ub }, { s_lb, d_lb } };
-}
-
-tuple<bool, fd> _prob_good[50][50][50];
-vector< rg > prob_bndr;
-rg full_rg;
-
-fd prob_good( int pb_i, int int_h, int int_n ){
-	int int_i = pb_i - int_h;
-
-	rg cr = int_i == 0 ? full_rg : { 0, get<0>( prob_bndr[ int_i - 1 ] )};
-
-	for( int i  = int_i; i < pb_i; i ++ ){
-		tie( ignore, cr ) = intrs( cr, prob_bndr[ i ] );
-	}
-
-	if( pb_i == prob_bndr.size() ){
-		return comb_rg( int_n, rg_len( cr ) );
+fd good( rg bnd_rg, int pb_i, int bnd_n ){
+	if( pb_i == bndr.size() ){
+		return comb_rg( bnd_n, rg_len( bnd_rg ));
 	}else{
-		auto& [ done, v ] = _prob_good[ pb_i ][ int_i ][ int_n ];
-		if( done == true ){
+		auto [ bnd_rg_lb, bnd_rg_ub ] = bnd_rg;
+		int i, b, c;
+
+		if( pt_ord( bnd_rg_lb ) <= pt_ord( bnd_rg_ub ) ){
+			c = 0;
+			[ i, b ] = bnd_rg_lb;
+		}else{
+			c = 1;
+			[ i, b ] = bnd_rg_ub;
+		}
+
+		auto& [ done, v ] = _good[ c ][ b ][ i ][ pb_i ][ bnd_n ];
+
+		if( done ){
 			return v;
 		}else{
 			done = true;
 
-			auto[ is_int, int_rg ] = intrs( cr, prob_bndr[ pb_i ] );
-			if( is_int == false ){
-				auto[ cr_lb, cr_ub ] = cr;
-				auto[ pb_lb, pb_ub ] = prob_bndr[ pb_i ];
-				if( pb_ub <= cr_lb ){
-					v = comb_rg( int_r, rg_len( cr ) ) * prob_good( pb_i + 1, 0, 0 );
+			pt pb_rg_lb = { pb_i, LB };
+			pt pb_rg_ub = { pb_i, UB };
+			rg pb_rg = { pb_rg_lb, pb_rg_ub };
+			auto [ int_b, int_rg ] = inters( pb_rg, bnd_rg );
+
+			if( int_b == false ){
+				if( pt_val( pb_rg_ub ) <= pt_val( bnd_rg_lb ) ){
+					v = comb_rg( bnd_n, rg_len( bnd_rg )) * good( pb_rg, pb_i, 0 );
 				}else{
-					v = 0;
+					v = fd( 0 );
 				}
 			}else{
-				auto[ pbr_up, pbr_dn ] = split( prob_bndr[ pb_i ], int_rg );
-				if( rg_empty( prb_dn ) == false ){
-					v = v + comb_rg( int_n, cr_len( cr ) ) * prob_bood( pb_i + 1, 1, 1);
+				v = fd( 0 );
+				auto[ int_rg_lb, int_rg_ub ] = int_rg;
+				
+				if( pt_val( int_rg_lb ) > pt_val( pb_rg_lb ) ){
+					auto new_bnd_rg = { pb_rg_lb, int_rg_lb };
+					v = comb_rg( bnd_n, rg_len( bnd_rg ) ) * good( new_bnd_rg, pb_i, 0 );
 				}
 
-				auto[ cr_ub, cr_dn ] = split( cr, int_rg );
-				if( rg_empty( cr_ub ) == false ){
-					for( int i = 1; i <= int_n; i ++ ){
-						int j = int_n - i;
-						v = v + comb_rg( i, rg_len( cr_ub ) ) * prob_good( pb_i + 1, int_h + 1, j + 1 ); 
-					}	
+				if( pt_val( bnd_rg_ub ) > pt_val( int_rg_ub ) ){
+					for( int i = 1; i <= bnd_n; i ++ ){
+						auto ex_rg = { int_rg_ub, bnd_rg_ub };
+						v = v + comb_rg( i, rg_len( ex_rg ) ) * good( int_rg, pb_i, bnd_n - i );
+					}
 				}
-				v = v + prob_good( pb_i + 1, int_h + 1, int_n + 1 );
+
+				v = v + good( int_rg, pb_i, bnd_n + 1 );
 			}
 			return v;
 		}
@@ -201,22 +214,25 @@ fd prob_good( int pb_i, int int_h, int int_n ){
 
 int main(){
 	int n;
-
 	cin >> n;
-	int max_bndr = 0;
 
 	for( int i = 0; i < n; i ++ ){
-		int l, r;
-		cin >> l >> r;
-		prob_bndr.push_back( { l, r + 1 } );
-		if( max_bndr < r + 1 ){
-			max_bndr = r + 1;
+		for( int j = 0; j < n; j ++ ){
+			for( int k = 0; k < n; k ++ ){
+				_good[0][0][i][j][k] = { false, fd(0) };
+				_good[0][1][i][j][k] = { false, fd(0) };
+				_good[1][0][i][j][k] = { false, fd(0) };
+				_good[1][1][i][j][k] = { false, fd(0) };
+			}
 		}
 	}
 
-	full_rg = { 0, max_bndr };
+	for( int i = 0; i < n; i ++ ){
+		int lb, ub;
+		cin >> lb >> ub;
+		bndr.push_back( { lb, ub + 1 } );
+	}
 
-	cout << * prob_good( 0, 0, 0 );
-
+	cout << good( {{ 0, LB }, { 1, UB }}, 0, 0 ) << endl;
 	return 0;
 }
