@@ -77,3 +77,7 @@ quotient_t div( const quotient_t &a, const quotient_t &b ){
 	return quotient( (int) ( nom / d ), (int) ( denm / d ) );
 }
 
+quotient_t operator+ ( const quotient_t &a, const quotient_t &b ){ return add( a, b ); }
+quotient_t operator- ( const quotient_t &a, const quotient_t &b ){ return sub( a, b ); }
+quotient_t operator* ( const quotient_t &a, const quotient_t &b ){ return mul( a, b ); }
+quotient_t operator/ ( const quotient_t &a, const quotient_t &b ){ return div( a, b ); }
