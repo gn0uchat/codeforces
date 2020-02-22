@@ -29,95 +29,53 @@ public:
 };
 
 tuple< int, vector<cd_node_t> > build_centroid_tree( const vector<list<int>>& adj ){
-	int tree_n = adj.size();
-	vector<cd_node_t> cd_tree( tree_n );
+	int node_n = adj.size();
+	vector<cd_node_t> cd_tree( node_n );
 
-	vector<bool> visit( tree_n, false );
-	vector<int> sub_tree_n( tree_n, 0 );
-	vector<bool> picked( tree_n, false );
+	vector<int> sub_tree_size( node_n, 0 );
+	vector<bool> picked( node_n, false );
 
-	function<int(int)> dfs;
-	dfs = [&]( int nd_i ) -> int {
-
-		/*
-		list<int> acyc;
-		acyc.push_back( nd_i );
-		for( auto it = acyc.begin(); it != acyc.end(); ++ it ){
-			auto i = * it;
-			visit[ i ] = true;
-			for( auto j : adj[ i ] ){
-				if( picked[ j ] || visit[ j ] ){ continue; }
-				acyc.push_back( j );
-			}
+	function<int(int, int)>
+	dfs_sub_tree_size = [&]( int i, int fi ) -> int {
+		auto& this_size = sub_tree_size[ i ];
+		this_size = 1;
+		for( auto j : adj[ i ] ){
+			if( picked[ j ] || ( j == fi ) ){ continue; }
+			this_size += dfs_sub_tree_size( j, i );
 		}
-
-		for( auto it = acyc.rbegin(); it != acyc.rend(); ++ it ){
-			auto i = * it;
-			sub_tree_n[ i ] = 1;
-			for( auto j : adj[ i ] ){
-				if( picked[ j ] || visit[ j ] ){ continue; }
-				sub_tree_n[ i ] += sub_tree_n[ j ];
-			}
-			visit[ i ] = false;
-		}
-		*/
-
-		///*
-		visit[ nd_i ] = true;
-		int& tree_n = sub_tree_n[ nd_i ];
-		tree_n = 1;
-		for( auto j : adj[ nd_i ] ){
-			if( picked[ j ] || visit[ j ]){ continue; }
-			tree_n = tree_n + dfs( j );
-		}
-		visit[ nd_i ] = false;
-		//*/
-		return sub_tree_n[ nd_i ];
+		return this_size;
 	};
 
 	function<int(int, int, int)> search_centroid;
-	function<int(int, int)> find_centroid;
+	function<int(int, int)> found_centroid;
 
-	search_centroid = [&]( int nd_i, int prev_i, int tree_n ) -> int {
-		int threshold = tree_n / 2;
-		bool overweight = false;
-		int i = nd_i, pi = prev_i;
-		do{
-			overweight = false;
-			for( auto j : adj[ i ] ){
-				if( ( picked[ j ] == true ) || ( j == pi ) ){ continue; }
-				if( sub_tree_n[ j ] > threshold ){
-					overweight = true;
-					pi = i;
-					i = j;
-					break;
-				}
-			}
-		}while( overweight );
-		return find_centroid( i, tree_n );
-	};
-
-	find_centroid = [&]( int nd_i, int n ) -> int {
-		cd_node_t& nd = cd_tree[ nd_i ];
-
-		picked[ nd_i ] = true;
-
-		nd.n = n;
-		for( auto j : adj[ nd_i ] ){
-			if( picked[ j ] == true ){ continue; }
-
-			dfs( j );
-			int sub_cd = search_centroid( j, nd_i, sub_tree_n[ j ] );
-			cd_node_t& sub_nd = cd_tree[ sub_cd ];
-
-			sub_nd.fth = nd_i;
-			nd.cld.push_back( { j, sub_cd } );
+	found_centroid = [&]( int i, int tree_size ) -> int {
+		//fprintf( stderr, "[debug] found centroid [ %d %d]\n", i, tree_size );
+		auto& the_tree = cd_tree[ i ];
+		picked[ i ] = true;
+		the_tree.n = tree_size;
+		for( auto j : adj[ i ] ){
+			if( picked[ j ] ){ continue; }
+			int sub_size = dfs_sub_tree_size( j, i );
+			int cd_j = search_centroid( j, i, sub_size );
+			the_tree.cld.push_back({ j, cd_j });
+			cd_tree[ cd_j ].fth = i;
 		}
-		return nd_i;
+		return i;
 	};
 
-	dfs( 0 );
-	int r = search_centroid( 0, 0, sub_tree_n[ 0 ] );
+	search_centroid = [&]( int i, int fi, int tree_size ) -> int {
+		for( auto j : adj[ i ] ){
+			if( picked[ j ] || ( j == fi ) ){ continue; }
+			if( sub_tree_size[ j ] > ( tree_size / 2 ) ){
+				return search_centroid( j, i, tree_size );
+			}
+		}
+		return found_centroid( i, tree_size );
+	};
+
+	int tree_size = dfs_sub_tree_size( 0, 0 );
+	int r = search_centroid( 0, 0, tree_size );
 	cd_tree[ r ].fth = r;
 
 	return { r, cd_tree };
@@ -146,7 +104,7 @@ public:
 	}
 
 	tuple<segm_t<T>, segm_t<T>> split_half() const {
-		return { segm_t( this->l, this->mid() ), segm_t( this->mid(), this->r ) };
+		return { segm_t<T>( this->l, this->mid() ), segm_t<T>( this->mid(), this->r ) };
 	}
 
 	bool is_unit() const {
@@ -200,20 +158,18 @@ private:
 				}
 
 				auto[ sb_set, sb_l ] = tree_query( next_i, next_bnd, x );
-				if( sb_set && segm_l( x ) < sb_l( x ) ){
+				if( sb_set && ( segm_l( x ) < sb_l( x ) ) ){
 					segm_l = sb_l;
 				}
 			}
-
 			return { set, segm_l };
 		}
-		
 	}
 
 	void tree_insert( int i, const segm_t<VAR_T>& bnd, const LN_T& l ){
 		auto& [ set, segm_l ] = tree_node[ i ];
 
-		if( set == false ){
+		if( ! set ){
 			set = true;
 			segm_l = l;
 		}else{
@@ -258,11 +214,10 @@ int main(){
 	cin >> n;
 
 	vector<list<int>> adj(n);
-	for( int i = 0; i < n-1; i ++ ){
+	for( int i = 0; i < n - 1; i ++ ){
 		int u, v;
 		cin >> u >> v;
-		u --;
-		v --;
+		u --; v --;
 		adj[ u ].push_back( v );
 		adj[ v ].push_back( u );
 	}
@@ -277,171 +232,89 @@ int main(){
 
 	auto[ cd_r, cd_tree ] = build_centroid_tree( adj );
 
-	vector<bool> visit( n, false );
+	vector<bool> mark( n, false );
 
 	function<long long int(int)>
-	cd_tree_dfs = [&]( int i ) -> long long int{
-		auto nd = cd_tree[ i ];
-		
+	centroid_max_cost = [&]( int ci ) -> long long int {
 		typedef tuple<int, long long int, long long int > path_t;
-		list<path_t> in_path, out_path;
-		list<int> path_n;
 
-		stack<tuple<int, path_t, path_t>> path_stack;
+		int cld_n = cd_tree[ ci ].cld.size();
+		vector< list< path_t >> head_set( cld_n + 1 ), tail_set( cld_n + 1 );
 
-		function<int(int, path_t, path_t)>
-		find_path = [&]( int i, path_t op, path_t ip ) -> int {
-		// auto find_path = [&]( int i ) -> int {
+		head_set[0].push_back( { 0, 0, 0 } );
+		tail_set[0].push_back( { 0, 0, 0 } );
 
-			/*
-			int find_path_n = 0;
-			path_stack.push({ i, { 0, 0, 0 }, { 0, 0, 0 } });
+		function<void(int,int,int, path_t, path_t )>
+		dfs_search_path = [&]( int i, int fi, int set_i, path_t head, path_t tail ){
+			bool is_leaf = true;
 
-			while( ! path_stack.empty() ){
-				auto[ i, op, ip ] = path_stack.top();
-				path_stack.pop();
-
-				if( visit[ i ] ){
-					visit[ i ] = false;
-				}else{
-					long long int v = value[ i ];
-					auto [ on, osum, opf ] = op;
-					auto [ in, isum, ipf ] = ip;
-					path_t the_ip = { in + 1, isum + v, ipf + v * ( (long long int) ( in + 1 )) };
-					path_t the_op = { on + 1, osum + v, opf + osum + v };
-
-					visit[ i ] = true;
-					path_stack.push( { i, op, ip } );
-
-					bool is_leaf = true;
-
-					for( auto j : adj[ i ] ){
-						if( visit[ j ] ){ continue; }
-						is_leaf = false;
-						path_stack.push({ j, the_op, the_ip });
-					}
-
-					if( is_leaf ){
-						out_path.push_back( the_op );
-						in_path.push_back( the_ip );
-						find_path_n ++;
-					}
-				}
-			}
-
-			return find_path_n;
-			*/
-			
-
-			///*
 			long long int v = value[ i ];
-			auto [ on, osum, opf ] = op;
-			auto [ in, isum, ipf ] = ip;
-			path_t the_ip = { in + 1, isum + v, ipf + v * ( (long long int) ( in + 1 )) };
-			path_t the_op = { on + 1, osum + v, opf + osum + v };
+			auto[ hn, hs, hp ] = head;
+			auto[ tn, ts, tp ] = tail;
 
-			visit[ i ] = true;
+			path_t the_head = { hn + 1, hs + v, hp + v * ((long long int)( hn + 1 ))};
+			path_t the_tail = { tn + 1, ts + v, tp + ts + v };
 
-			int r = 0;
 			for( auto j : adj[ i ] ){
-				if( visit[ j ] ){ continue; }
-				r += find_path( j, the_op, the_ip );
+				if( mark[ j ] || ( j == fi ) ){ continue; }
+				is_leaf = false;
+				dfs_search_path( j, i, set_i, the_head, the_tail );
 			}
 
-			visit[ i ] = false;
-
-			if( r == 0 ){
-				out_path.push_back( the_op );
-				in_path.push_back( the_ip );
-				return 1;
-			}else{
-				return r;
+			if( is_leaf ){
+				head_set[ set_i ].push_back( the_head );
+				tail_set[ set_i ].push_back( the_tail );
 			}
-			//*/
 		};
 
-		long long int max_cost = 0;
+		mark[ ci ] = true;
 
-		visit[ i ] = true;
-		for( auto[ oj, j ] : cd_tree[ i ].cld ){
-			max_cost = max( max_cost, cd_tree_dfs( j ) );
+		long long int max_cost = value[ ci ];
+
+		int set_i = 1;
+		for( auto[ nb_j, cd_j ] : cd_tree[ ci ].cld ){
+			dfs_search_path( nb_j, ci, set_i , {0, 0, 0}, {0, 0, 0} );
+			set_i ++;
 		}
 
-		in_path.push_back( { 0, 0, 0 } );
-		out_path.push_back( { 0, 0, 0 } );
-		path_n.push_back( 1 );
 		
-		for( auto[ oj, j ] : cd_tree[ i ].cld ){
-			//path_n.push_back( find_path( oj, { 0, 0, 0 }, { 0, 0, 0 } ) );
-			path_n.push_back( find_path( oj ) );
+		auto comb_head_tail = [&](){
+			cht_tree<int, long long int> bag( 0, ( (cd_tree[ ci ].n / 2) + 1 ) + 1 );
+			bag.insert( 0, 0 );
+
+			long long int v = value[ ci ];
+			for( int i = 0; i < tail_set.size(); i ++ ){
+				for( auto& tail : tail_set[ i ] ){
+					auto[ n, a, b ] = tail;
+					long long int path_cost = b + v * ( (long long int) ( n + 1 ));
+					path_cost += bag.query( n + 1 );
+					max_cost = max( max_cost, path_cost );
+				}
+				
+				for( auto head : head_set[ i ] ){
+					auto[ n, a, b ] = head;
+					bag.insert( a, b );
+				}
+			}
+		};
+
+		comb_head_tail();
+
+		reverse( head_set.begin(), head_set.end() );
+		reverse( tail_set.begin(), tail_set.end() );
+		comb_head_tail();
+
+		head_set.clear();
+		tail_set.clear();
+
+		for( auto[ nb_j, cd_j ] : cd_tree[ ci ].cld ){
+			max_cost = max( max_cost, centroid_max_cost( cd_j ) );
 		}
-		visit[ i ] = false;
-
-		long long int v = value[ i ];
-
-		auto itr_path = [&](){
-			cht_tree<int, long long int> bag( 0, ( nd.n / 2 + 1 ) + 1 );
-			bag.insert( 0, 0 );
-
-			auto f = in_path.begin();
-			auto g = out_path.begin();
-			for( auto n : path_n ){
-				for( int i = 0; i < n; i ++ ){
-					auto[ pn, ps, pf ] = *g;
-					long long int cn = pn + 1;
-					long long int cf = pf + v * ((long long int) ( pn + 1 ));
-
-					max_cost = max( max_cost, bag.query( cn ) + cf );
-
-					++ g;
-				}
-
-				for( int i = 0; i < n; i ++ ){
-					auto[ pn, ps, pf ] = *f;
-					bag.insert( ps, pf );
-					++ f;
-				}
-			}
-		};
-
-		/*
-		auto ritr_path = [&](){
-			cht_tree<int, long long int> bag( 0, ( nd.n / 2 + 1 ) + 1 );
-			bag.insert( 0, 0 );
-
-			auto f = in_path.rbegin();
-			auto g = out_path.rbegin();
-			for( auto it = path_n.rbegin(); it != path_n.rend(); ++ it ){
-				auto n = * it;
-				for( int i = 0; i < n; i ++ ){
-					auto[ pn, ps, pf ] = *g;
-					long long int cn = pn + 1;
-					long long int cf = pf + v * ((long long int) ( pn + 1 ));
-
-					max_cost = max( max_cost, bag.query( cn ) + cf );
-
-					++ g;
-				}
-
-				for( int i = 0; i < n; i ++ ){
-					auto[ pn, ps, pf ] = *f;
-					bag.insert( ps, pf );
-					++ f;
-				}
-			}
-		};
-		*/
-		// ritr_path();
-
-		itr_path();
-
-		in_path.reverse(); out_path.reverse(); path_n.reverse();
-		itr_path();
 
 		return max_cost;
 	};
 
-	cout << cd_tree_dfs( cd_r ) << endl;
+	cout << centroid_max_cost( cd_r ) << endl;
 
 	return 0;
 }
