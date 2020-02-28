@@ -134,7 +134,7 @@ private:
 	segm_t< VAR_T > full_segm;
 
 	bool line_ge( segm_t<VAR_T> bnd, const LN_T& b, const LN_T& s ){
-		return s( bnd.l ) < b( bnd.l ) && s( bnd.r - 1 ) < b( bnd.r - 1 );
+		return s( bnd.l ) <= b( bnd.l ) && s( bnd.r - 1 ) <= b( bnd.r - 1 );
 	}
 
 	tuple<bool, LN_T> tree_query( int i, const segm_t<VAR_T>& bnd, VAR_T x ){
@@ -196,7 +196,7 @@ private:
 
 public:
 	cht_tree(){}
-	cht_tree( VAR_T l, VAR_T r ) : full_segm( l, r ), tree_node( 4 * ( r - l ), {false, LN_T()} ){}
+	cht_tree( VAR_T l, VAR_T r ) : full_segm( l, r ), tree_node( 4 * ( r - l + 1 ), {false, LN_T()} ){}
 
 	void insert( COEF_T a, COEF_T b ){
 		tree_insert( 1, full_segm, LN_T( a, b ) );
