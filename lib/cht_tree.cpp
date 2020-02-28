@@ -51,7 +51,7 @@ private:
 	segm_t< VAR_T > full_segm;
 
 	bool line_ge( segm_t<VAR_T> bnd, const LN_T& b, const LN_T& s ){
-		return s( bnd.l ) < b( bnd.l ) && s( bnd.r - 1 ) < b( bnd.r - 1 );
+		return s( bnd.l ) <= b( bnd.l ) && s( bnd.r - 1 ) <= b( bnd.r - 1 );
 	}
 
 	tuple<bool, LN_T> tree_query( int i, const segm_t<VAR_T>& bnd, VAR_T x ){
