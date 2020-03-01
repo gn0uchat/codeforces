@@ -10,6 +10,7 @@
 #include<iostream>
 #include<list>
 #include<tuple>
+#define debug( args... ) do{fprintf( stderr, "[debug] " );fprintf( stderr, args ); fprintf(stderr, "\n");}while(0)
 using namespace std;
 template< typename T>
 class segm_t{
@@ -58,123 +59,240 @@ public:
 template< typename VAR_T, typename COEF_T>
 class cht_tree{
 private:
+	typedef segm_t<VAR_T> var_segm_t;
+	typedef line_t<VAR_T, COEF_T> cht_line_t;
 	size_t elem_cnt;
-	typedef line_t<VAR_T, COEF_T> LN_T;
 
-	vector<tuple<bool, LN_T>> tree_node;
-	segm_t< VAR_T > full_segm;
+	class tree_node{
+	public:
+		cht_line_t line;
+		tree_node *left, *right;
+		tree_node(): left(NULL), right(NULL){}
+		tree_node( const cht_line_t& l ): line(l), left(NULL), right(NULL){}
+	};
 
-	bool line_ge( segm_t<VAR_T> bnd, const LN_T& b, const LN_T& s ){
-		return s( bnd.l ) <= b( bnd.l ) && s( bnd.r - 1 ) <= b( bnd.r - 1 );
+	tree_node* alloc_node( const cht_line_t& line ){
+		elem_cnt ++;
+		return new tree_node( line );
 	}
 
-	tuple<bool, LN_T> tree_query( int i, const segm_t<VAR_T>& bnd, VAR_T x ){
-		if( bnd.is_unit() ){
-			return tree_node[ i ];
-		}else{
-			auto [ set, segm_l ] = tree_node[ i ];
+	tree_node* root;
+	var_segm_t full_segm;
 
-			if( set ){
-				segm_t<VAR_T> next_bnd;
-				int next_i;
+	bool lt( COEF_T a, COEF_T b ){ return a > b; }
+	bool ge( COEF_T a, COEF_T b ){ return ! lt( a,  b ); }
 
-				auto[ l_bnd, r_bnd ] = bnd.split_half();
+	bool line_ge( const cht_line_t& b, const cht_line_t& s, const var_segm_t& segm ){
+		return ge( b( segm.l ), s( segm.l ) ) && ge( b( segm.r - 1 ), s( segm.r - 1 ) );
+	}
 
-				if( l_bnd.contain( segm_t<VAR_T>( x ) ) ){
-					next_bnd = l_bnd;
-					next_i = 2 * i;
-				}else{ 
-					next_bnd = r_bnd;
-					next_i = 2 * i + 1;
-				}
-
-				auto[ sb_set, sb_l ] = tree_query( next_i, next_bnd, x );
-				if( sb_set && ( segm_l( x ) < sb_l( x ) ) ){
-					segm_l = sb_l;
-				}
-			}
-			return { set, segm_l };
+	void node_clear( tree_node* nd ){
+		if( nd->left ){
+			node_clear( nd->left );
 		}
+		if( nd->right ){
+			node_clear( nd->right );
+		}
+		delete nd;
 	}
 
-	void tree_insert( int i, const segm_t<VAR_T>& bnd, const LN_T& l ){
-		auto& [ set, segm_l ] = tree_node[ i ];
-
-		if( ! set ){
-			elem_cnt ++;
-			set = true;
-			segm_l = l;
+	void node_insert( tree_node* nd, const var_segm_t& nd_segm, const cht_line_t& new_line ){
+		if( line_ge( nd->line, new_line, nd_segm ) ){
+		}else if( line_ge( new_line, nd->line, nd_segm ) ){
+			nd->line = new_line;
 		}else{
-			if( line_ge( bnd, segm_l, l ) ){
-			}else if( line_ge( bnd, l, segm_l ) ){
-				segm_l = l;
-			}else{
-				auto[ l_bnd, r_bnd ] = bnd.split_half();
-				VAR_T m = bnd.mid();
+			auto dn_line = lt( new_line( nd_segm.mid() ), nd->line( nd_segm.mid() ) )
+					? new_line : nd->line;
+			auto up_line = lt( new_line( nd_segm.mid() ), nd->line( nd_segm.mid() ) )
+					? nd->line : new_line;
 
-				LN_T up_l = l(m) < segm_l(m) ? segm_l : l;
-				LN_T dn_l = l(m) < segm_l(m) ? l : segm_l;
-
-				segm_l = up_l;
-
-				if( up_l( bnd.l ) < dn_l( bnd.l ) ){
-					tree_insert( 2 * i, l_bnd, dn_l );
+			nd->line = up_line;
+			if( ! nd_segm.is_unit() ){
+				auto[ left_segm, right_segm ] = nd_segm.split_half();
+				if( lt( up_line( nd_segm.l ), dn_line( nd_segm.l ) ) ){
+					if( nd->left ){
+						node_insert( nd->left, left_segm, dn_line );
+					}else{
+						nd->left = alloc_node( dn_line );
+					}
 				}else{
-					tree_insert( 2 * i + 1, r_bnd, dn_l );
+					if( nd->right ){
+						node_insert( nd->right, right_segm, dn_line );
+					}else{
+						nd->right = alloc_node( dn_line );
+					}
 				}
 			}
 		}
 	}
 
-	void node_for_each( int i, const segm_t<VAR_T>& bnd, function<void(COEF_T, COEF_T)> proc ){
-		auto [ set, l ] = tree_node[ i ];
-		if( set ){
-			proc( l.a, l.b );
-			if( ! bnd.is_unit() ){
-				auto[ l_bnd, r_bnd ] = bnd.split_half();
-				node_for_each( 2 * i , l_bnd, proc );
-				node_for_each( 2 * i + 1, r_bnd, proc );		
+	const cht_line_t& node_query( tree_node* nd, const var_segm_t& nd_segm, VAR_T x ){
+		if( nd_segm.is_unit() ){
+			return nd->line;
+		}else{
+			auto[ left_segm, right_segm ] = nd_segm.split_half();
+			if( x <= nd_segm.mid() ){
+				if( nd->left ){
+					auto sub_l = node_query( nd->left, left_segm, x );
+					return lt( sub_l( x ), nd->line( x ) ) ? nd->line: sub_l;
+				}else{
+					return nd->line;
+				}
+			}else{
+				if( nd->right ){
+					auto sub_l = node_query( nd->right, right_segm, x );
+					return lt( sub_l( x ), nd->line( x ) ) ? nd->line: sub_l;
+				}else{
+					return nd->line;
+				}
 			}
+		}
+	}
+
+	void node_for_each( tree_node* nd, function<void(COEF_T, COEF_T)> proc ){
+		proc( nd->line.a, nd->line.b );
+		if( nd->left ){
+			node_for_each( nd->left, proc );
+		}
+		if( nd->right ){
+			node_for_each( nd->right, proc );
 		}
 	}
 
 public:
-	cht_tree(){}
-	cht_tree( VAR_T l, VAR_T r ) : full_segm( l, r ), tree_node( 4 * ( r - l ), {false, LN_T()} ), elem_cnt(0){}
-
-	void insert( COEF_T a, COEF_T b ){
-		tree_insert( 1, full_segm, LN_T( a, b ) );
-	}
-
-	auto query( VAR_T x ){
-		auto[ set, l ] = tree_query( 1, full_segm, x );
-		return l( x );
-	}
+	cht_tree(): root(NULL), full_segm(0,0), elem_cnt(0){}
+	cht_tree( VAR_T l, VAR_T r ): root(NULL), full_segm(l,r), elem_cnt(0){}
 
 	size_t size(){
-		return this->elem_cnt;
+		return elem_cnt;
+	}
+	void clear(){
+		if( this->root ){
+			node_clear( this->root );
+			this->root = NULL;
+		}
+		this->full_segm = var_segm_t( 0, 0 );
+		this->elem_cnt = 0;
+	}
+
+	void insert( COEF_T a, COEF_T b ){
+		if( this->root ){
+			node_insert( this->root, this->full_segm, cht_line_t( a, b ) );
+		}else{
+			this->root = alloc_node( cht_line_t( a, b ) );
+		}
+	}
+
+	COEF_T query( VAR_T x ){
+		if( this->root ){
+			auto ql = node_query( this->root, this->full_segm, x );
+			return ql( x );
+		}else{
+			return COEF_T();
+		}
 	}
 
 	void for_each( function<void(COEF_T, COEF_T)> proc ){
-		node_for_each( 1, full_segm, proc );
+		if( this->root ){
+			node_for_each( this->root, proc );
+		}
+	}
+
+	~cht_tree(){
+		clear();
 	}
 };
 
-auto set_union = []( auto& set_a, auto& set_b ) -> auto& {
-	if( set_b.size() < set_a.size() ){
-		set_b.for_each( [&]( auto a, auto b ){
-			set_a.insert( a, b );
+auto union_set = []( auto* set_a, auto* set_b ) -> auto*{
+	if( set_b->size() < set_a->size() ){
+		set_b->for_each( [&]( auto a, auto b ){
+			set_a->insert( a, b );
 		});
+		delete set_b;
 		return set_a;
 	}else{
-		set_a.for_each( [&]( auto a, auto b ){
-			set_b.insert( a, b );
+		set_a->for_each( [&]( auto a, auto b ){
+			set_b->insert( a, b );
 		});
+		delete set_a;
 		return set_b;
 	}
-
 };
 
+typedef long long int number;
 int main(){
+	int n;
+	vector<int> a, b;
+	cin >> n;
+
+	int cost_min = 100000, cost_max = -100000;
+
+	for( int i = 0; i < n; i ++ ){
+		int v;
+		cin >> v;
+		cost_min = min( cost_min, v );
+		cost_max = max( cost_max, v );
+		a.push_back( v );
+	}
+
+	for( int i = 0; i < n; i ++ ){
+		int v;
+		cin >> v;
+		cost_min = min( cost_min, v );
+		cost_max = max( cost_max, v );
+		b.push_back( v );
+	}
+
+	vector<list<int>> adj( n );
+
+	for(int i = 0; i < n - 1; i ++ ){
+		int u, v;
+		cin >> u >> v; u --; v --;
+		adj[ u ].push_back( v );
+		adj[ v ].push_back( u );
+	}
+
+	vector<number> opt_jump( n );
+
+	function<cht_tree<int, number>* (int, int)>
+	tree_dfs = [&]( int u, int fu ) -> cht_tree<int, number>* {
+		if( u != 0 && adj[ u ].size() <= 1 ){
+			auto t = new cht_tree<int, number>( cost_min, cost_max + 1 );
+
+			opt_jump[ u ] = 0;
+			t->insert( b[ u ], opt_jump[ u ] );
+			return t;
+		}else{
+			cht_tree<int, number> *t  = NULL;
+			for( auto v : adj[ u ] ){
+				if( v == fu ){ continue; }
+				if( t == NULL ){
+					t = tree_dfs( v, u );
+				}else{
+					t = union_set( t, tree_dfs( v, u ));
+				}
+			}
+
+			opt_jump[ u ] = t->query( a[ u ] );
+			t->insert( b[ u ],  opt_jump[ u ] );
+
+			return t;
+		}
+
+	};
+
+	tree_dfs( 0, 0 );
+
+	bool first = true;
+	for( auto v : opt_jump ){
+		if( first ){
+			first = false;
+		}else{
+			cout << " ";
+		}
+		cout << v;
+	}
+	cout << endl;
+
 	return 0;
 }

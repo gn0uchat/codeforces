@@ -6,27 +6,13 @@ public:
 		l( b ), r( b + 1 ){}
 	segm_t( T l, T r ):
 		l( l ), r( r ){}
-
-	bool is_null() const {
-		return this->l == this->r;
-	}
-
-	bool contain( const segm_t<T>& s ) const {
-		return ( this->l <= s.l ) && ( this->r >= s.r );
-	}
-
-	T mid() const {
-		return ( this->l + this->r ) / 2;
-	}
-
+	bool is_null() const { return this->l == this->r; }
+	bool contain( const segm_t<T>& s ) const { return ( this->l <= s.l ) && ( this->r >= s.r ); }
+	T mid() const { return ( this->l + this->r ) / 2; }
 	tuple<segm_t<T>, segm_t<T>> split_half() const {
 		return { segm_t<T>( this->l, this->mid() ), segm_t<T>( this->mid(), this->r ) };
 	}
-
-	bool is_unit() const {
-		return ( this->l + 1 == this->r );
-	}
-
+	bool is_unit() const { return ( this->l + 1 == this->r ); }
 };
 
 template< typename X_T, typename Y_T >
@@ -146,7 +132,7 @@ public:
 	}
 };
 
-auto set_union = []( auto& set_a, auto& set_b ) -> auto& {
+auto union_set = []( auto& set_a, auto& set_b ) -> auto& {
 	if( set_b.size() < set_a.size() ){
 		set_b.for_each( [&]( auto a, auto b ){
 			set_a.insert( a, b );
@@ -160,7 +146,3 @@ auto set_union = []( auto& set_a, auto& set_b ) -> auto& {
 	}
 
 };
-
-int main(){
-	return 0;
-}
