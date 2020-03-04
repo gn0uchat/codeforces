@@ -1,3 +1,17 @@
+#include<map>
+#include<set>
+#include<cstdio>
+#include<algorithm>
+#include<vector>
+#include<utility>
+#include<string>
+#include<functional>
+#include<queue>
+#include<iostream>
+#include<list>
+#include<tuple>
+using namespace std;
+
 template< typename X_T, typename Y_T >
 class line_t{
 private:
@@ -74,3 +88,39 @@ public:
 	}
 };
 
+typedef long long int number;
+
+
+
+int main(){
+	int n;
+	cin >> n;
+
+	vector<number> tree_h, tree_p;
+
+	for( int i = 0; i < n; i ++ ){
+		int v;
+		cin >> v;
+		tree_h.push_back( v );
+	}
+
+	for( int i = 0; i < n; i ++ ){
+		int v;
+		cin >> v;
+		tree_p.push_back( v );
+	}
+
+	vector< number > opt_cost( n );
+	mono_cht<int, number> bag;
+
+	opt_cost[ n - 1 ] = 0;
+	bag.insert( tree_h[ n - 1 ], opt_cost[ n - 1 ] );
+
+	for( int i = n - 2; i >= 0; i -- ){
+		opt_cost[ i ] = bag.query( tree_p[ i ] );
+		bag.insert( tree_h[ i ], opt_cost[ i ] );
+	}
+
+	cout << opt_cost[ 0 ] << endl;
+	return 0;
+}
