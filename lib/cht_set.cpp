@@ -1,3 +1,4 @@
+template< typename T >
 class segm_t{
 public:
 	T l, r;
