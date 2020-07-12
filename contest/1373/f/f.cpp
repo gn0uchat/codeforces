@@ -12,99 +12,192 @@
 #include<tuple>
 using namespace std;
 
-int main(){
-    int t;
-    cin >> t;
-    while( t --> 0 ){
-        int n;
-        vector<int> a, b;
+class segment_t {
+    private:
+    int l, r;
 
-        cin >> n;
+    public:
+    segment_t( int l, int r ){
+        this->l = l;
+        this->r = r;
+    }
 
-        for( int i = 0; i < n; i ++ ){
-            int house_holds;
-            cin >> house_holds;
-            a.push_back( house_holds );
+    int mid(){
+        return ( l + r ) / 2;
+    }
+
+    segment_t left(){
+        return segment_t( l, mid() );
+    }
+
+    segment_t right(){
+        return segment_t( mid(), r );
+    }
+
+    bool unit(){
+        return l + 1 == r;
+    }
+};
+
+template<class T>
+class seg_tree {
+    class node_t : segment_t {
+        public:
+        int i;
+
+        node_t(int i, int l, int r)
+        : segment_t( l, r ) {
+            this->i = i;
         }
 
-        for( int i = 0; i < n; i ++ ){
-            int capacity;
-            cin >> capacity;
-            b.push_back( capacity );
+        node_t(int i, segment_t seg)
+        : segment_t( seg.l, seg.r ) {
+            this->i = i;
         }
 
-        function<tuple<bool, int>(int, int)> over_supply = [&]
-        (int i, int previous_supply) -> tuple<bool, int> {
-            bool over = true;
-            int supply = previous_supply;
-
-            for( int i = 0; i < n - 1; i ++ ){
-                if( supply + b[ i ] < a[ i ] ){
-                    over = false;
-                    break;
-                }
-                int satisfied = min( supply, a[ i ] );
-                supply = b[ i ] - ( a[ i ] - satisfied );
-            }
-            return make_tuple( over, supply );
-        /*
-            if( i == n - 1 ){
-                return true;
-            }else{
-                if( previous_supply + b[ i ] < a[ i ] ){
-                    return false;
-                }else{
-                    int satisfied = min( previous_supply, a[ i ] );
-                    int next_supply = b[ i ] - ( a[ i ] - satisfied );
-                    return over_supply( i + 1, next_supply );
-                }
-            }
-        */
-        };
-
-        function<bool(int, int, int)> valid_supply =
-        [&](int init_supply, int i, int previous_supply) -> bool {
-            int back_supply = b[ n-1 ] - init_supply;
-            auto[ over, supply ] = over_supply( 0, init_supply );
-
-            return over && back_supply + supply >= a[ n-1 ];
-            
-        /*
-            if( i == n - 1 ){
-                int back_supply = b[ n-1 ] - init_supply;
-                return previous_supply + back_supply >= a[ n-1 ];
-            }else{
-                if( previous_supply + b[ i ] < a[ i ] ){
-                    return false;
-                }else{
-                    int satisfied = min( previous_supply, a[ i ] );
-                    int next_supply = b[ i ] - ( a[ i ] - satisfied );
-                    return valid_supply( init_supply, i + 1, next_supply );
-                }
-            }
-        */
-        };
-
-        int min = -1, max = b[ n-1 ]; 
-
-        while( max - min > 1 ){
-            int mid = ( min + max ) / 2;
-            auto [over, supply] = over_supply( 0, mid );
-            if( over ){
-                max = mid;
-            }else{
-                min = mid;
-            }
+        node_t left(){
+            return node_t( 2 * i, segment_t::left() );
         }
 
-        int opt_supply = max;
+        node_t right(){
+            return node_t( 2 * i + 1, segment_t::right() );
+        }
 
-        if( valid_supply( opt_supply, 0, opt_supply ) ){
-            cout << "YES" << endl;
+    };
+    
+    private:
+
+    node_t root;
+
+    T query(node_t node, segment_t query){
+        if( node.unit() ){
+            return nodes[ node.i ];
         }else{
-            cout << "NO" << endl;
+            if( query.r <= node.mid() ){
+                return query( node.left(), query );
+            }else if( node.mid() <= query.l ){
+                return query( node.right(), query );
+            }else{
+                return min(
+                    query( node.left(),  segment_t( query.l, node.mid() )),
+                    query( node.right(), segment_t( node.mid(), query.r ))
+                );
+            }
         }
     }
 
+    T build( node_t node, function<T(segment_t)> unit_value ){
+        if( node.unit() ){
+            nodes[ node.i ] = unit_value( node );
+        }else{
+            nodes[ node.i ] = min(
+                build( node.left(),  unit_value ),
+                build( node.right(), unit_value )
+            );    
+        }
+        return nodes[ node.i ];
+    }
+
+    public:
+
+    vector<T> nodes;
+
+    seg_tree( int l, int r, vector<T>& units ){
+        
+        segment_t full_seg( l, r );
+
+        for( int i = 0; i < 2 * units.size(); i ++ ){
+            nodes.push_back( 0 );
+        }
+
+        root = node_t( 1, full_seg );
+
+        build(
+            root,
+            [&]( segment_t seg ) -> T {
+                return units[ seg.l ];
+            }
+        );
+    }
+
+    T query( int l, int r ){
+        return query( root, segment_t( l, r ) );
+    }
+};
+
+/*
+int main(){
+    int T;
+    cin >> T;
+    while( T --> 0 ){
+        int n;
+        cin >> n;
+
+        vector<int> demand, supply;
+
+        for( int i = 0; i < n; i ++ ){
+            int input_demand;
+            cin >> input_demand;
+            demand.push_back( input_demand );
+        }
+
+        for( int i = 0; i < n; i ++ ){
+            int input_supply;
+            cin >> input_supply;
+            supply.push_back( input_supply );
+        }
+
+        function<tuple<bool, int>(int)> over_supply = 
+        [&]( int init_supply ){
+            bool over = true;
+            int supply = init_supply;
+
+            for( int i = 0; i < n; i ++ ){
+                if( supply + supply[ i ] < demand[ i ] ){
+                    over = false;
+                    break;
+                }else{
+                    supply = supply[ i ] - min( supply, demand[ i ] );
+                }
+            }
+
+            return make_tuple( over, supply );
+        }
+
+        priority_queue<int, vector<int>, greater<int>> linear_delta;
+        int linear_n = 0, linear_aggr = 0;
+
+        function<bool(int)> aggr_over_supply =
+        [&]( int init_supply ){
+            for(; linear_n < n &&
+                linear_aggr + init_supply < demand[ linear_n ]; linear_n ++ ){
+
+                linear_delta.push( linear_aggr );
+                linear_aggr += supply[ linear_n ] - demand[ linear_n ];
+            }
+            if(! linear_delta.empty() && linear_delta.top() + init_supply >= 0 ){
+                return true;
+            }else{
+                return false;
+            }
+        }
+
+        auto[ over, supply ] = over_supply( b[ n-1 ] );
+
+        if( ! over ){
+            cout << "NO" << endl;
+            continue;
+        }
+
+        int min = -1, max = b[ n-1 ];
+        
+        while( max - min > 1 ){
+            int mid = ( min + max ) / 2;
+            if( aggr_over_supply( mid ))
+        }
+
+
+    }
 	return 0;
 }
+*/
