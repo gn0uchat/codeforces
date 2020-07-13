@@ -13,10 +13,9 @@
 using namespace std;
 
 class segment_t {
-    private:
+    public:
     int l, r;
 
-    public:
     segment_t( int l, int r ){
         this->l = l;
         this->r = r;
@@ -40,7 +39,7 @@ class segment_t {
 };
 
 template<class T>
-class seg_tree {
+class segment_tree {
     class node_t : segment_t {
         public:
         int i;
@@ -67,7 +66,10 @@ class seg_tree {
     
     private:
 
+    vector<T> nodes;
     node_t root;
+
+    function<T (T, T)> min;
 
     T query(node_t node, segment_t query){
         if( node.unit() ){
@@ -78,7 +80,7 @@ class seg_tree {
             }else if( node.mid() <= query.l ){
                 return query( node.right(), query );
             }else{
-                return min(
+                return this->min(
                     query( node.left(),  segment_t( query.l, node.mid() )),
                     query( node.right(), segment_t( node.mid(), query.r ))
                 );
@@ -86,31 +88,30 @@ class seg_tree {
         }
     }
 
-    T build( node_t node, function<T(segment_t)> unit_value ){
+    T build( node_t node, function<T (segment_t)> unit_value ){
         if( node.unit() ){
             nodes[ node.i ] = unit_value( node );
         }else{
-            nodes[ node.i ] = min(
+            nodes[ node.i ] = this->min(
                 build( node.left(),  unit_value ),
                 build( node.right(), unit_value )
-            );    
+            );
         }
         return nodes[ node.i ];
     }
 
     public:
 
-    vector<T> nodes;
-
-    seg_tree( int l, int r, vector<T>& units ){
-        
+    segment_tree( int l, int r, vector<T>& units, function<T (T, T)> min ){
+            
         segment_t full_seg( l, r );
 
         for( int i = 0; i < 2 * units.size(); i ++ ){
             nodes.push_back( 0 );
         }
 
-        root = node_t( 1, full_seg );
+        this->min = min;
+        this->root = node_t( 1, full_seg );
 
         build(
             root,
@@ -125,7 +126,6 @@ class seg_tree {
     }
 };
 
-/*
 int main(){
     int T;
     cin >> T;
@@ -147,6 +147,23 @@ int main(){
             supply.push_back( input_supply );
         }
 
+        vector<long long> aggr;
+        long long aggr_sum = 0;
+
+        for( int i = 0; i < n; i ++ ){
+            aggr.push_back( aggr_sum );
+            aggr_sum += supply[ i ] - demand[ i ] 
+        }
+
+        segment_tree<long long> min_aggr( 0, n, aggr, []( long long a, long long b ){ return min(a, b) });
+        segment_tree<long long> max_aggr( 0, n, aggr, []( long long a, long long b ){ return max(a, b) });
+        
+        auto over_supply = [&]( int init_supply ){
+            
+        }
+
+
+        /*
         function<tuple<bool, int>(int)> over_supply = 
         [&]( int init_supply ){
             bool over = true;
@@ -198,6 +215,6 @@ int main(){
 
 
     }
+    */
 	return 0;
 }
-*/
