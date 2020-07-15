@@ -102,7 +102,7 @@ class segment_tree {
 
     public:
 
-    segment_tree( int l, int r, vector<T>& units, function<T (T, T)> min ){
+    segment_tree( int l, int r, function<T(int)> units, function<T (T, T)> min ){
             
         segment_t full_seg( l, r );
 
@@ -116,7 +116,7 @@ class segment_tree {
         build(
             root,
             [&]( segment_t seg ) -> T {
-                return units[ seg.l ];
+                return units( seg.l );
             }
         );
     }
@@ -125,6 +125,19 @@ class segment_tree {
         return query( root, segment_t( l, r ) );
     }
 };
+
+template<T>
+T bin_search(T min, T max, function<bool(T)> check ){
+    while( max - min > 1 ){
+        T mid = ( min + max ) / 2;
+        if( check( mid ) ){
+            max = mid;
+        }else{
+            min = mid;
+        }
+    }
+    return max;
+}
 
 int main(){
     int T;
@@ -155,13 +168,22 @@ int main(){
             aggr_sum += supply[ i ] - demand[ i ] 
         }
 
-        segment_tree<long long> min_aggr( 0, n, aggr, []( long long a, long long b ){ return min(a, b) });
-        segment_tree<long long> max_aggr( 0, n, aggr, []( long long a, long long b ){ return max(a, b) });
-        
-        auto over_supply = [&]( int init_supply ){
-            
-        }
+        segment_tree<long long> min_aggr( 0, n,
+            [&](int i){ return aggr[ i ] },
+            []( long long a, long long b ){ return min(a, b) }
+        );
 
+        segment_tree<long long> max_aggr( 0, n,
+            [&]( int i ){ return aggr[ i ] - demand[ i ] },
+            []( long long a, long long b ){ return max(a, b) }
+        );
+        
+        int last_full_i = 0;
+        auto over_supply = [&]( int init_supply ){
+            last_full_i = bin_search<int>( last_full_i, n, [&]( int v ){
+                return init_supply + max_aggr.query( 0, v ) > 0;
+            })
+        }
 
         /*
         function<tuple<bool, int>(int)> over_supply = 
