@@ -106,7 +106,7 @@ class segment_tree {
             
         segment_t full_seg( l, r );
 
-        for( int i = 0; i < 2 * units.size(); i ++ ){
+        for( int i = 0; i < 2 * ( r - l ); i ++ ){
             nodes.push_back( 0 );
         }
 
@@ -129,14 +129,14 @@ class segment_tree {
 template<T>
 T bin_search(T min, T max, function<bool(T)> check ){
     while( max - min > 1 ){
-        T mid = ( min + max ) / 2;
+        T mid = ( min + max + 1 ) / 2;
         if( check( mid ) ){
             max = mid;
         }else{
             min = mid;
         }
     }
-    return max;
+    return min;
 }
 
 int main(){
@@ -164,7 +164,7 @@ int main(){
         long long aggr_sum = 0;
 
         for( int i = 0; i < n; i ++ ){
-            aggr.push_back( aggr_sum );
+            aggr.push_back( aggr_sum - demand[ i ] );
             aggr_sum += supply[ i ] - demand[ i ] 
         }
 
@@ -174,69 +174,47 @@ int main(){
         );
 
         segment_tree<long long> max_aggr( 0, n,
-            [&]( int i ){ return aggr[ i ] - demand[ i ] },
+            [&]( int i ){ return aggr[ i ] },
             []( long long a, long long b ){ return max(a, b) }
         );
         
-        int last_full_i = 0;
-        auto over_supply = [&]( int init_supply ){
-            last_full_i = bin_search<int>( last_full_i, n, [&]( int v ){
-                return init_supply + max_aggr.query( 0, v ) > 0;
-            })
-        }
-
-        /*
-        function<tuple<bool, int>(int)> over_supply = 
-        [&]( int init_supply ){
+        auto over_supply = [&]( int init_supply ) -> tuple<bool, long long> {
             bool over = true;
-            int supply = init_supply;
-
-            for( int i = 0; i < n; i ++ ){
-                if( supply + supply[ i ] < demand[ i ] ){
+            long long supply = init_supply;
+            for( int i = 0; i < n && over; i ++ ){
+                if( supply + supply[ i ] >= demand[ i ] ){
                     over = false;
-                    break;
                 }else{
-                    supply = supply[ i ] - min( supply, demand[ i ] );
+                    supply = supply[ i ] - min(supply, demand[ i ]);
                 }
             }
-
             return make_tuple( over, supply );
         }
 
-        priority_queue<int, vector<int>, greater<int>> linear_delta;
-        int linear_n = 0, linear_aggr = 0;
-
-        function<bool(int)> aggr_over_supply =
-        [&]( int init_supply ){
-            for(; linear_n < n &&
-                linear_aggr + init_supply < demand[ linear_n ]; linear_n ++ ){
-
-                linear_delta.push( linear_aggr );
-                linear_aggr += supply[ linear_n ] - demand[ linear_n ];
-            }
-            if(! linear_delta.empty() && linear_delta.top() + init_supply >= 0 ){
-                return true;
-            }else{
-                return false;
-            }
-        }
-
-        auto[ over, supply ] = over_supply( b[ n-1 ] );
-
-        if( ! over ){
+        auto( cond_over, cond_supply ) = over_supply( supply[ n-1 ] );
+        if( ! cond_over ){
             cout << "NO" << endl;
             continue;
         }
 
-        int min = -1, max = b[ n-1 ];
-        
-        while( max - min > 1 ){
-            int mid = ( min + max ) / 2;
-            if( aggr_over_supply( mid ))
+        auto quick_over_supply = [&]( int init_supply ) -> bool {
+            int last_full_i = bin_search<int>( -1, n, [&]( int v ){
+                return init_supply + max_aggr.query( 0, v ) >= 0; }
+            );
+            return init_supply + min_aggr.query( 0, last_full_i ) >= 0
         }
 
+        int opt_supply = bin_search<int>( -1, supply[ n-1 ], [&]( int v ){
+            quick_over_supply( v )
+        })
 
-    }
-    */
-	return 0;
+        auto( over, supply ) = over_suply( opt_supply )
+
+        if( over && supply + ( supply[ n-1 ] + opt_supply ) >= demand[ n-1 ] ){
+            cout << "YES" << endl;
+        }else{
+            cout << "NO" << endl;
+        }
+
+        return 0;
 }
